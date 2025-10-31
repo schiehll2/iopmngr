@@ -1,1 +1,53 @@
+name: iopmngr RPA Schedule
 
+on:
+  schedule:
+    # Entrada (08:55 BRT = 11:55 UTC)
+    - cron: '55 11 * * 1-5'
+    # Saída (17:05 BRT = 20:05 UTC)
+    - cron: '05 20 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  run-iopmngr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python -m playwright install --with-deps
+
+      - name: Run iopmngr (entrada)
+        if: github.event.schedule == '10 11 * * 1-5'
+        env:
+          PONTO_USERNAME: ${{ secrets.PONTO_USERNAME }}
+          PONTO_PASSWORD: ${{ secrets.PONTO_PASSWORD }}
+          PONTO_BASE_URL: ${{ secrets.PONTO_BASE_URL }}
+          PONTO_ACTION: 'in'
+        run: python iopmngr.py
+
+      - name: Run iopmngr (saída)
+        if: github.event.schedule == '05 20 * * 1-5'
+        env:
+          PONTO_USERNAME: ${{ secrets.PONTO_USERNAME }}
+          PONTO_PASSWORD: ${{ secrets.PONTO_PASSWORD }}
+          PONTO_BASE_URL: ${{ secrets.PONTO_BASE_URL }}
+          PONTO_ACTION: 'out'
+        run: python iopmngr.py
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: iopmngr-logs
+          path: |
+            screenshot_*.png
+            error_*.png
